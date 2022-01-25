@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, collections::HashMap};
 
 use crate::{edge_options::{EdgeOptions}, node_options::NodeOptions};
 
@@ -12,6 +12,7 @@ fn test_graph() {
 
     net.add_node(2, "Coolerer", None);
     net.add_node(3, "Coolererer", Some(vec![NodeOptions::Hex("#ff0000"), NodeOptions::Shape("hexagon")]));
+
 
     net.add_edge(2, 3, Some(vec![EdgeOptions::Hex("#ff0000"), EdgeOptions::Opacity(0.3)]));
     net.create("funny.html").unwrap();
@@ -32,7 +33,7 @@ fn test_graph() {
 /// ```
 pub struct Network<'a> {
     nodes: Vec<(u128, String, Option<Vec<NodeOptions<'a>>>)>,
-    edges: Vec<(u128, u128, Option<Vec<EdgeOptions<'a>>>)>
+    edges: Vec<(u128, u128, Option<Vec<EdgeOptions<'a>>>)>,
 }
 
 impl<'a> Network<'a> {
@@ -47,7 +48,7 @@ impl<'a> Network<'a> {
     pub fn new() -> Self {
         Network {
             nodes: vec![],
-            edges: vec![]
+            edges: vec![],
         }
     }
 
@@ -64,6 +65,10 @@ impl<'a> Network<'a> {
     /// net.add_node(1, "Example2", None);
     /// ```
     pub fn add_node(&mut self, id: u128, name: &str, node_options: Option<Vec<NodeOptions<'a>>>) {
+        if self.nodes.iter().any(|(id_, _, _)| *id_ == id) {
+            return;
+        }
+
         self.nodes.push((id, name.to_string(), node_options));
     }
 
@@ -111,7 +116,8 @@ impl<'a> Network<'a> {
         // Nodes
         file.write_all(r#"var nodes = new vis.DataSet(["#.as_bytes())?;
 
-        for (from, to, node_options) in self.nodes {
+        let mut write_str = String::new();
+        for (id, name, node_options) in self.nodes {
             let mut node_options_value = String::new();
             let node_options_match = match node_options {
                 Some(options) => options,
@@ -121,8 +127,9 @@ impl<'a> Network<'a> {
                 node_options_value.push_str(format!("{x}").as_str());
             }
             node_options_value.push('}');
-            file.write_all(format!("{{ id: {from}, label: \"{to}\", {node_options_value},").as_bytes())?;
+            write_str.push_str(format!("{{ id: {id}, label: \"{name}\", {node_options_value},\n").as_str());
         }
+        file.write_all(write_str.as_bytes())?;
 
         file.write_all(r#"]);"#.as_bytes())?;
         file.write_all("\n".as_bytes())?;
@@ -130,6 +137,7 @@ impl<'a> Network<'a> {
         // Edges
         file.write_all(r#"var edges = new vis.DataSet(["#.as_bytes())?;
 
+        let mut write_str = String::new();
         for (from, to, edge_options) in self.edges {
             let mut edge_options_value = "{".to_string();
             let edge_options_match = match edge_options {
@@ -140,8 +148,9 @@ impl<'a> Network<'a> {
                 edge_options_value.push_str(format!("{x}").as_str());
             }
             edge_options_value.push('}');
-            file.write_all(format!("{{ from: {from}, to: {to}, color: {edge_options_value} }},").as_bytes())?;
+            write_str.push_str(format!("{{ from: {from}, to: {to}, color: {edge_options_value} }},\n").as_str());
         }
+        file.write_all(write_str.as_bytes())?;
 
         file.write_all(r#"]);"#.as_bytes())?;
         file.write_all("\n".as_bytes())?;
