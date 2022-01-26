@@ -86,6 +86,10 @@ impl<'a> Network<'a> {
     /// net.add_edge(0, 1, None);
     /// ```
     pub fn add_edge(&mut self, from: u128, to: u128, edge_options: Option<Vec<EdgeOptions<'a>>>) {
+        if self.edges.iter().any(|(from_, to_, _)| *from_ == from && *to_ == to) {
+            return;
+        }
+
         self.edges.push((from, to, edge_options));
     }
 
