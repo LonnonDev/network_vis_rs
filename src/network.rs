@@ -8,13 +8,13 @@ fn test_graph() {
     net.add_node(0, "Cool", None);
     net.add_node(1, "Cooler", Some(vec![NodeOptions::Hex("#ff0000"), NodeOptions::Shape("hexagon"), NodeOptions::Title("not slime boy")]));
 
-    net.add_edge(0, 1, Some(vec![EdgeOptions::Hex("#ff0000"), EdgeOptions::Opacity(0.3)]));
+    net.add_edge(0, 1, Some(vec![EdgeOptions::Hex("#ff0000"), EdgeOptions::Opacity(0.3)]), false);
 
     net.add_node(2, "Coolerer", None);
     net.add_node(3, "Coolererer", Some(vec![NodeOptions::Hex("#ff0000"), NodeOptions::Shape("hexagon")]));
 
 
-    net.add_edge(2, 3, Some(vec![EdgeOptions::Hex("#ff0000"), EdgeOptions::Opacity(0.3)]));
+    net.add_edge(2, 3, Some(vec![EdgeOptions::Hex("#ff0000"), EdgeOptions::Opacity(0.3)]), false);
     net.create("funny.html").unwrap();
 }
 
@@ -33,7 +33,7 @@ fn test_graph() {
 /// ```
 pub struct Network<'a> {
     nodes: Vec<(u128, String, Option<Vec<NodeOptions<'a>>>)>,
-    edges: Vec<(u128, u128, Option<Vec<EdgeOptions<'a>>>)>,
+    edges: Vec<(u128, u128, Option<Vec<EdgeOptions<'a>>>, bool)>,
 }
 
 impl<'a> Network<'a> {
@@ -85,12 +85,12 @@ impl<'a> Network<'a> {
     /// // Takes 2 ids and then a vector of edge options
     /// net.add_edge(0, 1, None);
     /// ```
-    pub fn add_edge(&mut self, from: u128, to: u128, edge_options: Option<Vec<EdgeOptions<'a>>>) {
-        if self.edges.iter().any(|(from_, to_, _)| *from_ == from && *to_ == to) {
+    pub fn add_edge(&mut self, from: u128, to: u128, edge_options: Option<Vec<EdgeOptions<'a>>>, arrow: bool) {
+        if self.edges.iter().any(|(from_, to_, _, _)| *from_ == from && *to_ == to) {
             return;
         }
 
-        self.edges.push((from, to, edge_options));
+        self.edges.push((from, to, edge_options, arrow));
     }
 
     /// Create the html graph file
@@ -142,7 +142,7 @@ impl<'a> Network<'a> {
         file.write_all(r#"var edges = new vis.DataSet(["#.as_bytes())?;
 
         let mut write_str = String::new();
-        for (from, to, edge_options) in self.edges {
+        for (from, to, edge_options, arrow) in self.edges {
             let mut edge_options_value = "{".to_string();
             let edge_options_match = match edge_options {
                 Some(options) => options,
@@ -152,7 +152,11 @@ impl<'a> Network<'a> {
                 edge_options_value.push_str(format!("{x}").as_str());
             }
             edge_options_value.push('}');
-            write_str.push_str(format!("{{ from: {from}, to: {to}, color: {edge_options_value} }},\n").as_str());
+            let mut arrow_string = String::new();
+            if arrow == true {
+                arrow_string.push_str("arrows: { to: { enabled: true, type: \"arrow\" }}")
+            }
+            write_str.push_str(format!("{{ from: {from}, to: {to}, color: {edge_options_value}, {arrow_string} }},\n").as_str());
         }
         file.write_all(write_str.as_bytes())?;
 
